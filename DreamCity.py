@@ -54,8 +54,10 @@ st.write("Find a city for your dream to stay!")
   
 image = st.sidebar.image(logo,"",100)
 
+st.sidebar.title("Select your dream:")
+
 mainTab = st.sidebar.selectbox(
-    "Begin your Dream:",
+    "",
     ("By Preferences", "Feeling lucky?")
 )
 
@@ -64,13 +66,7 @@ mainTab = st.sidebar.selectbox(
 # In[7]:
 
 
-######################################            Importing and Cleaning              ############################# 
-
-
-# In[94]:
-
-
-# user_input = [[75,4,5,8,77,88,99,-9999,-9999]]
+######################################            Importing and Cleaning              #############################
 
 
 # In[95]:
@@ -82,23 +78,20 @@ df = pd.read_csv("https://raw.githubusercontent.com/RCyn/DreamCity/main/FinalDat
 # In[96]:
 
 
-# df
-
-
 ######################     Streamlit setup       #################
 
 default_input = [[-9999]*9]
 
 user_input = default_input
 compute = False
+MLcompute = False
+user_input_city = ""
 
 if mainTab == "By Preferences":
-#  curPrefs = ['Movehub Rating','Purchase Power','Health Care','Pollution','Quality of Life','Crime Rating','Congestion Level','Education','Annual Temperature']
-  
   movehubCheck = st.sidebar.checkbox('Movehub Rating')
   if movehubCheck:
     movehub = st.slider(
-      'Movehub Rating',
+      '',
       0, 100, (80))
     st.write('Movehub Rating:', movehub)
     user_input[0][0] = movehub
@@ -106,7 +99,7 @@ if mainTab == "By Preferences":
   purchaseCheck = st.sidebar.checkbox('Purchase Power')
   if purchaseCheck:
     purchase = st.slider(
-      'Purchase Power',
+      '',
       0, 100, (30))
     st.write('Purchase Power:', purchase)
     user_input[0][1] = purchase
@@ -114,7 +107,7 @@ if mainTab == "By Preferences":
   healthCheck = st.sidebar.checkbox('Health Care')
   if healthCheck:
     health = st.slider(
-      'Health Care',
+      '',
       0, 100, (70))
     st.write('Health Care:', health)
     user_input[0][2] = health
@@ -122,7 +115,7 @@ if mainTab == "By Preferences":
   pollutionCheck = st.sidebar.checkbox('Pollution')
   if pollutionCheck:
     pollution = st.slider(
-      'Pollution',
+      '',
       0, 100, (20))
     st.write('Polution:', pollution)
     user_input[0][3] = pollution
@@ -130,7 +123,7 @@ if mainTab == "By Preferences":
   lifeQualityCheck = st.sidebar.checkbox('Quality of Life')
   if lifeQualityCheck:
     lifeQuality = st.slider(
-      'Quality of Life',
+      '',
       0, 100, (90))
     st.write('Quality of Life:', lifeQuality)
     user_input[0][4] = lifeQuality
@@ -138,7 +131,7 @@ if mainTab == "By Preferences":
   crimeRatingCheck = st.sidebar.checkbox('Crime Rating')
   if crimeRatingCheck:
     crimeRating = st.slider(
-      'Crime Rating',
+      '',
       0, 100, (10))
     st.write('Crime Rating:', crimeRating)
     user_input[0][5] = crimeRating
@@ -146,7 +139,7 @@ if mainTab == "By Preferences":
   congestionCheck = st.sidebar.checkbox('Congestion Level')
   if congestionCheck:
     congestion = st.slider(
-      'Congestion Level',
+      '',
       0, 100, (40))
     st.write('Congestion Level:', congestion)
     user_input[0][6] = congestion
@@ -154,7 +147,7 @@ if mainTab == "By Preferences":
   educationCheck = st.sidebar.checkbox('Education')
   if educationCheck:
     education = st.slider(
-      'Education',
+      '',
       0, 100, (90))
     st.write('Education:', education)
     user_input[0][7] = education
@@ -162,7 +155,7 @@ if mainTab == "By Preferences":
   climateCheck = st.sidebar.checkbox('Annual Average Temperature (F)')
   if climateCheck:
     climate = st.slider(
-      'Annual Average Temperature (F)',
+      '',
       0, 100, (60))
     st.write('Annual Average Temperature:', climate)
     user_input[0][8] = climate
@@ -176,11 +169,11 @@ if mainTab == "By Preferences":
   
   
 else:
-  city = st.text_input("Your Dream City is...", "city")
+  user_input_city = st.text_input("Your Dream City is...", "city")
   # re-run
-  if city in df["City"].tolist():
+  if user_input_city in df["City"].tolist():
     MLcompute = st.button("Find")
-  elif city != "city":
+  elif user_input_city != "city":
     st.write("City not in database, could you provide a different one?")
 
 
@@ -234,7 +227,7 @@ model = KMeans(n_clusters=8, n_init=100)
 model.fit(X_reduced)
 clusters = unique(model.labels_)
 df["Cluster"] = model.labels_
-print(df.mean(axis = 0))
+#print(df.mean(axis = 0))
 for i in range(len(user_input[0])):
     if user_input[0][i] == -9999:
         user_input[0][i] = df.mean(axis = 0)[i]
@@ -281,6 +274,9 @@ def generate_score(val_df,importance,ideal_temp):
         score_num=score_num+sum([x*y for x,y in zip(val_df.loc[:,col_1:col_8].values.tolist()[i],importance)])
         score_num=score_num+math.fabs(val_df.loc[:,col_9].values.tolist()[i]-ideal_temp)
         score.append(score_num)
+    max_value=max(score)
+    for i in range(len(score)):
+        score[i]=score[i]/max_value*100
     return score
 
 
@@ -321,7 +317,7 @@ df_to_plot['Score']=generate_score(df_to_plot,importance,ideal_temp)
 # In[35]:
 
 
-features = ['Movehub Rating', 'Purchase Power', 'Health Care', 'Quality of Life', 'Pollution', 'Crime Rating','Congestion Level','Education','Annual Temperature']
+features = ['Movehub Rating', 'Purchase Power', 'Health Care', 'Quality of Life', 'Pollution', 'Crime Rating','Congestion Level','Education','Annual Temperature','Description']
 
 
 # In[36]:
@@ -330,7 +326,8 @@ features = ['Movehub Rating', 'Purchase Power', 'Health Care', 'Quality of Life'
 def create_graph(df):
     fig = px.scatter_mapbox(df.sort_values('Score', ascending=False).round(),
                         lat="lat", lon="lng", color="Score", hover_name="City",
-                        hover_data=features, size_max=15, zoom=1,
+                        hover_data=features,
+                        size_max=15, zoom=1,
                         mapbox_style="carto-positron")
     st.plotly_chart(fig)
 
@@ -338,7 +335,36 @@ def create_graph(df):
 # In[37]:
 
 if mainTab == "By Preferences" and compute:
+  st.title("Map")
   create_graph(df_to_plot)
+  
+  HighestScores = []
+  for i in range(len(df)):
+    if int(df["Score"][i]) >= 95:
+      HighestScores.append(df["City"][i])
+      
+        
+  st.title("Are you interested in...")
+  
+  div1, div2 = int((len(HighestScores)+2) / 3), int(2*(len(HighestScores)+1) / 3)
+
+      
+  col1, col2, col3 = st.beta_columns(3)
+  
+  with col1:
+    for i in range(div1):
+      st.write(HighestScores[i])
+
+  with col2:
+    for i in range(div1, div2):
+      st.write(HighestScores[i])
+
+  with col3:
+    for i in range(div2, len(HighestScores)):
+      st.write(HighestScores[i])
+
+    
+  
 
 
 # In[38]:
@@ -350,17 +376,72 @@ df.sort_values('Score', ascending=False)[['City', 'Score'] + features].round()
 # In[333]:
 
 
-######################################             End of Plot Making            ############################# 
+######################################             End of Preference Plot            #############################
+
+# In[110]:
 
 
-# In[ ]:
+######################################             Start of Feeling Lucky Plot          ###################
+
+
+# In[183]:
 
 
 
+def find_df(user_input_city):
+    index_num=df.index[df['City']==user_input_city][0]
+    cluster_num=df.loc[index_num,"Cluster"]
+    df_temp=df
+    rows_to_drop=[]
+    for i in range(len(df_temp)):
+        if df_temp.loc[i,"Cluster"] !=cluster_num:
+            rows_to_drop.append(i)
+            
+    return df_temp.drop(rows_to_drop)
+    
 
 
-# In[ ]:
+# In[185]:
 
+def create_lucky_graph(df):
+    fig = px.scatter_mapbox(df.sort_values('Cluster', ascending=False).round(),
+                        lat="lat", lon="lng", color="Cluster", hover_name="City",
+                        hover_data=features,
+                        size_max=15, zoom=1,
+                        mapbox_style="carto-positron")
+    fig.update_layout(coloraxis_showscale=False)
+    st.plotly_chart(fig)
+
+
+# In[186]:
+
+if mainTab == "Feeling lucky?" and MLcompute:
+  filterResult = find_df(user_input_city)
+
+  st.title("Map")
+  create_lucky_graph(filterResult)
+    
+  cityResults = filterResult['City'].tolist()
+  cityResults.remove(user_input_city)
+  
+  
+  st.title("Are you interested in...")
+  
+  div1, div2 = int((len(cityResults)+2) / 3), int(2*(len(cityResults)+1) / 3)
+  
+  col1, col2, col3 = st.beta_columns(3)
+  
+  with col1:
+    for i in range(div1):
+      st.write(cityResults[i])
+
+  with col2:
+    for i in range(div1, div2):
+      st.write(cityResults[i])
+
+  with col3:
+    for i in range(div2, len(cityResults)):
+      st.write(cityResults[i])
 
 
 
